@@ -6,7 +6,6 @@ import importlib.util
 st.title("Bộ sưu tập bài tập 🎯")
 
 # # 🗂 Lấy danh sách các bài tập từ thư mục "exercises"
-exercise_files = [f for f in os.listdir("/Users/nguyenvietnam/Documents/Machine_Learning/exercises") if f.endswith(".py")]
 exercise_names = [f.replace(".py", "") for f in exercise_files]
 
 # 🎛 Tạo menu sidebar để chọn bài tập
