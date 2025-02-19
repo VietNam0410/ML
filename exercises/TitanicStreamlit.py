@@ -10,7 +10,7 @@ import numpy as np
 
 def main():
     # Đọc tập dữ liệu Titanic
-    df = pd.read_csv('/Users/nguyenvietnam/Documents/Machine_Learning/titanic.csv')
+    df = pd.read_csv('titanic.csv')
 
     st.title("Hướng Dẫn Tiền Xử Lý Dữ Liệu Titanic")
 

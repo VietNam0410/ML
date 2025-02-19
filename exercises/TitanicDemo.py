@@ -5,7 +5,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 
 def load_data():
-    df = pd.read_csv('/Users/nguyenvietnam/Documents/Machine_Learning/titanic.csv')
+    df = pd.read_csv('titanic.csv')
     return df
 
 def preprocess_data(df):
