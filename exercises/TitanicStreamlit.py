@@ -10,7 +10,7 @@ import numpy as np
 
 def main():
     # Đọc tập dữ liệu Titanic
-    df = pd.read_csv('/Users/nguyenvietnam/Documents/Machine_Learning/exercises/titanic.csv')
+    df = pd.read_csv('titanic.csv')
 
     st.title("Hướng Dẫn Tiền Xử Lý Dữ Liệu Titanic")
 
@@ -32,7 +32,7 @@ def main():
 
     st.header("3. Điền Giá Trị Thiếu")
     st.write("Dữ liệu sau khi điền giá trị thiếu:")
-    st.dataframe(df.head())
+    st.dataframe(df)
 
     # Chuyển đổi dữ liệu phân loại thành số nguyên tuần tự
     label_encoders = {}
@@ -45,7 +45,7 @@ def main():
 
     st.header("4. Chuyển Đổi Dữ Liệu Phân Loại")
     st.write("Dữ liệu sau khi mã hóa các biến phân loại thành số:")
-    st.dataframe(df.head())
+    st.dataframe(df)
 
     # Chuẩn hóa các cột số (loại bỏ cột 'Name' nếu tồn tại)
     if 'Name' in df.columns:
@@ -57,7 +57,7 @@ def main():
 
     st.header("5. Chuẩn Hóa Dữ Liệu")
     st.write("Dữ liệu sau khi chuẩn hóa:")
-    st.dataframe(df.head())
+    st.dataframe(df)
 
     # Người dùng chọn tỷ lệ train/validation, giữ nguyên tập test 15%
     train_size = st.slider("Chọn tỷ lệ tập train (%)", 50, 85, 70) / 100
@@ -69,7 +69,7 @@ def main():
     st.header("6. Chia Dữ Liệu")
     st.write(f'Train size: {train_data.shape}, Validation size: {valid_data.shape}, Test size: {test_data.shape}')
     st.write("Dữ liệu sau khi chia:")
-    st.dataframe(train_data.head())
+    st.dataframe(train_data)
 
     # Lựa chọn mô hình
     st.header("7. Huấn Luyện Mô Hình")
