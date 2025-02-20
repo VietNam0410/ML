@@ -3,7 +3,7 @@ import streamlit as st
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
-
+# Nhớ tạo thêm chọn model để dự đoán
 def load_data():
     df = pd.read_csv('titanic.csv')#Nếu dùng web app thì thay đường dẫn bằng 'titanic.csv'
    #còn local thì thay bằng '/Users/nguyenvietnam/Documents/Machine_Learning/titanic.csv'
