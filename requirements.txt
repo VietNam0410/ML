@@ -7,4 +7,4 @@ scikit-learn
 mlflow
 importlib.util  
 streamlit-drawable-canvas
-# cv2
+pencv-python
