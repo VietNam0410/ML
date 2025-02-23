@@ -49,8 +49,12 @@ def main():
     # Chia dữ liệu
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+    from sklearn.preprocessing import StandardScaler
+
+# Giả sử X_train là một pandas DataFrame, ta sẽ chuyển nó thành numpy array
+    X_train_scaled = scaler.fit_transform(X_train.values)
+
+    X_test_scaled = scaler.transform(X_test.values)
 
     # Chọn mô hình
     st.sidebar.header("⚙️ Cài đặt mô hình")
