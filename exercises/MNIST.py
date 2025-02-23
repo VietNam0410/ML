@@ -11,17 +11,22 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 from PIL import Image, ImageOps
-# import cv2
 from streamlit_drawable_canvas import st_canvas
-
+import openml
 # Load dữ liệu
 @st.cache_data
+
+
 def load_mnist():
-    mnist = openml.datasets.get_dataset(45104)  # Dataset MNIST-784 trên OpenML
-    X, y, _, _ = mnist.get_data(target=mnist.default_target_attribute)  # Lấy dữ liệu
-    X = pd.DataFrame(X)  # Chuyển X thành DataFrame
-    y = y.astype(int)  # Đảm bảo y là kiểu int
-    return X, y
+    try:
+        # Tải tập dữ liệu MNIST từ OpenML
+        mnist = openml.datasets.get_dataset(45104)  # Dataset MNIST-784 trên OpenML
+        X, y, _, _ = mnist.get_data(target=mnist.default_target_attribute)  # Lấy dữ liệu
+        return X, y
+    except Exception as e:
+        print(f"Error while loading dataset: {e}")
+        return None, None
+
 
 def bai_tap_mnist():
     st.subheader("📝 Bài tập MNIST")
