@@ -8,4 +8,3 @@ mlflow
 streamlit-drawable-canvas
 opencv-python
 openml
-mnist
