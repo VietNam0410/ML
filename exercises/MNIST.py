@@ -17,8 +17,10 @@ from streamlit_drawable_canvas import st_canvas
 # Load dữ liệu
 @st.cache_data
 def load_mnist():
-    mnist = fetch_openml('mnist_784', version=1, as_frame=False)
-    X, y = mnist.data, mnist.target.astype(int)
+    mnist = openml.datasets.get_dataset(45104)  # Dataset MNIST-784 trên OpenML
+    X, y, _, _ = mnist.get_data(target=mnist.default_target_attribute)  # Lấy dữ liệu
+    X = pd.DataFrame(X)  # Chuyển X thành DataFrame
+    y = y.astype(int)  # Đảm bảo y là kiểu int
     return X, y
 
 def bai_tap_mnist():
@@ -38,6 +40,13 @@ def main():
     
     X, y = load_mnist()
     st.write(f"🔹 Dữ liệu MNIST có {X.shape[0]} hình ảnh, mỗi ảnh có {X.shape[1]} pixel")
+    index = st.slider('Chọn ảnh để hiển thị', min_value=0, max_value=len(X)-1, value=0)
+    image = X.iloc[index].values.reshape(28, 28)
+    st.image(image, caption=f'Chữ số: {y[index]}', use_column_width=True)
+
+    # Thống kê
+    st.write(f"Tổng số ảnh: {len(X)}")
+    st.write(f"Tổng số lớp: {len(set(y))}")
 
     # Chia dữ liệu
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
