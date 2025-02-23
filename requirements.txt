@@ -5,3 +5,6 @@ matplotlib
 seaborn
 scikit-learn
 mlflow
+importlib.util  
+streamlit-drawable-canvas
+cv2
