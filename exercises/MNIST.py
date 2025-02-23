@@ -44,15 +44,22 @@ def main():
     """)
     
     X, y = load_mnist()
-    st.write(f"🔹 Dữ liệu MNIST có {X.shape[0]} hình ảnh, mỗi ảnh có {X.shape[1]} pixel")
 
-    # Chia dữ liệu
+    # Chia dữ liệu thành train/test
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    scaler = StandardScaler()
-# Giả sử X_train là một pandas DataFrame, ta sẽ chuyển nó thành numpy array
-    X_train_scaled = scaler.fit_transform(X_train.values)
-    X_test_scaled = scaler.transform(X_test.values)
 
+    # Kiểm tra và chuyển đổi dữ liệu thành kiểu hợp lệ
+    X_train = X_train.apply(pd.to_numeric, errors='coerce')  # Chuyển thành số nếu cần
+    X_train = X_train.fillna(0)  # Xử lý NaN
+    X_test = X_test.apply(pd.to_numeric, errors='coerce')  # Chuyển thành số nếu cần
+    X_test = X_test.fillna(0)  # Xử lý NaN
+
+    # Khởi tạo StandardScaler
+    scaler = StandardScaler()
+
+    # Tiến hành chuẩn hóa dữ liệu
+    X_train_scaled = scaler.fit_transform(X_train.to_numpy())
+    X_test_scaled = scaler.transform(X_test.to_numpy())
     # Chọn mô hình
     st.sidebar.header("⚙️ Cài đặt mô hình")
     model_option = st.sidebar.selectbox("Chọn mô hình để huấn luyện", ["Decision Tree", "SVM"])
