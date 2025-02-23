@@ -12,10 +12,9 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, confusion_matrix
 from PIL import Image, ImageOps
 from streamlit_drawable_canvas import st_canvas
-import openml
 
-# Load dữ liệu
-st.cache_data
+# Load dữ liệu (Caching to improve performance)
+@st.cache_data
 def load_mnist():
     mnist = fetch_openml('mnist_784', version=1, as_frame=False)
     X, y = mnist.data, mnist.target.astype(int)
@@ -28,14 +27,8 @@ def bai_tap_mnist():
 def main():
     # Title
     st.title("🎨 Nhận diện chữ số MNIST với SVM & Decision Tree")
-    st.markdown("""
-    ### 📌 Hướng dẫn:
-    1. **Tải dữ liệu MNIST** 📥
-    2. **Chọn mô hình và huấn luyện** 🤖
-    3. **Xem đánh giá kết quả** 🎯
-    4. **Tải ảnh vẽ tay hoặc vẽ trực tiếp để dự đoán** 🖌
-    """)
-    
+
+    # Load dữ liệu
     X, y = load_mnist()
     st.write(f"🔹 Dữ liệu MNIST có {X.shape[0]} hình ảnh, mỗi ảnh có {X.shape[1]} pixel")
 
@@ -49,15 +42,19 @@ def main():
     st.sidebar.header("⚙️ Cài đặt mô hình")
     model_option = st.sidebar.selectbox("Chọn mô hình để huấn luyện", ["Decision Tree", "SVM"])
 
+    # Huấn luyện mô hình nếu chưa có mô hình đã huấn luyện
+    if 'model' not in st.session_state:
+        st.session_state.model = None
+
     if st.sidebar.button("Huấn luyện mô hình"):
         st.sidebar.write("⏳ Đang huấn luyện...")
         if model_option == "Decision Tree":
-            model = DecisionTreeClassifier(max_depth=10, random_state=42)
+            st.session_state.model = DecisionTreeClassifier(max_depth=10, random_state=42)
         else:
-            model = SVC(kernel='rbf', C=10)
+            st.session_state.model = SVC(kernel='rbf', C=10)
         
-        model.fit(X_train_scaled, y_train)
-        y_pred = model.predict(X_test_scaled)
+        st.session_state.model.fit(X_train_scaled, y_train)
+        y_pred = st.session_state.model.predict(X_test_scaled)
         accuracy = accuracy_score(y_test, y_pred)
         st.sidebar.success(f"✅ Độ chính xác: {accuracy:.4f}")
         
@@ -68,7 +65,7 @@ def main():
         
         # Lưu vào MLFlow
         with mlflow.start_run():
-            mlflow.sklearn.log_model(model, "model")
+            mlflow.sklearn.log_model(st.session_state.model, "model")
             mlflow.log_metric("accuracy", accuracy)
             mlflow.log_param("model", model_option)
 
@@ -97,24 +94,24 @@ def main():
         return scaler.transform(image_array)
 
     # Kiểm tra nếu có dữ liệu từ bảng vẽ hoặc file upload
-    if uploaded_file or (canvas_result is not None and hasattr(canvas_result, 'image_data') and canvas_result.image_data is not None):
+    if uploaded_file or (canvas_result.image_data is not None):
         if uploaded_file:
             image = Image.open(uploaded_file)
-        elif canvas_result is not None and hasattr(canvas_result, 'image_data') and canvas_result.image_data is not None:
+        elif canvas_result.image_data is not None:
             image = Image.fromarray((canvas_result.image_data[:, :, :3] * 255).astype(np.uint8))
 
         # Kiểm tra nếu ảnh hợp lệ
         if image is not None:
             image_array = preprocess_image(image)
             
-            if model_option == "Decision Tree":
-                model = DecisionTreeClassifier(max_depth=10, random_state=42).fit(X_train_scaled, y_train)
+            # Dự đoán với mô hình đã huấn luyện
+            if st.session_state.model is not None:
+                prediction = st.session_state.model.predict(image_array)[0]
+                st.image(image, caption=f"📢 Mô hình dự đoán: {prediction}", use_container_width=True)
+                st.success(f"✅ Kết quả dự đoán: {prediction}")
             else:
-                model = SVC(kernel='rbf', C=10).fit(X_train_scaled, y_train)
-            
-            prediction = model.predict(image_array)[0]
-            st.image(image, caption=f"📢 Mô hình dự đoán: {prediction}", use_column_width=True)
-            st.success(f"✅ Kết quả dự đoán: {prediction}")
+                st.warning("⚠️ Vui lòng huấn luyện mô hình trước khi dự đoán.")
+
         else:
             st.error("⚠️ Vui lòng vẽ số hoặc tải ảnh hợp lệ.")
 
