@@ -9,24 +9,17 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from sklearn.metrics import accuracy_score, confusion_matrix
 from PIL import Image, ImageOps
 from streamlit_drawable_canvas import st_canvas
 import openml
+
 # Load dữ liệu
-@st.cache_data
-
-
+st.cache_data
 def load_mnist():
-    try:
-        # Tải tập dữ liệu MNIST từ OpenML
-        mnist = openml.datasets.get_dataset(45104)  # Dataset MNIST-784 trên OpenML
-        X, y, _, _ = mnist.get_data(target=mnist.default_target_attribute)  # Lấy dữ liệu
-        return X, y
-    except Exception as e:
-        print(f"Error while loading dataset: {e}")
-        return None, None
-
+    mnist = fetch_openml('mnist_784', version=1, as_frame=False)
+    X, y = mnist.data, mnist.target.astype(int)
+    return X, y
 
 def bai_tap_mnist():
     st.subheader("📝 Bài tập MNIST")
@@ -44,22 +37,14 @@ def main():
     """)
     
     X, y = load_mnist()
+    st.write(f"🔹 Dữ liệu MNIST có {X.shape[0]} hình ảnh, mỗi ảnh có {X.shape[1]} pixel")
 
-    # Chia dữ liệu thành train/test
+    # Chia dữ liệu
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # Kiểm tra và chuyển đổi dữ liệu thành kiểu hợp lệ
-    X_train = X_train.apply(pd.to_numeric, errors='coerce')  # Chuyển thành số nếu cần
-    X_train = X_train.fillna(0)  # Xử lý NaN
-    X_test = X_test.apply(pd.to_numeric, errors='coerce')  # Chuyển thành số nếu cần
-    X_test = X_test.fillna(0)  # Xử lý NaN
-
-    # Khởi tạo StandardScaler
     scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-    # Tiến hành chuẩn hóa dữ liệu
-    X_train_scaled = scaler.fit_transform(X_train.to_numpy())
-    X_test_scaled = scaler.transform(X_test.to_numpy())
     # Chọn mô hình
     st.sidebar.header("⚙️ Cài đặt mô hình")
     model_option = st.sidebar.selectbox("Chọn mô hình để huấn luyện", ["Decision Tree", "SVM"])
@@ -104,23 +89,13 @@ def main():
         key="canvas",
     )
 
-    # def preprocess_image(image):
-    #     image = image.convert('L')
-    #     image = ImageOps.invert(image)
-    #     image = image.resize((28, 28))
-    #     image_array = np.array(image).reshape(1, -1)
-    #     return scaler.transform(image_array)
     def preprocess_image(image):
-        image_array = image.reshape(1, -1)  # Chuyển đổi ảnh thành 1 hàng (1, số tính năng)
-        return scaler.transform(image_array)  # Sử dụng scaler đã huấn luyện
+        image = image.convert('L')
+        image = ImageOps.invert(image)
+        image = image.resize((28, 28))
+        image_array = np.array(image).reshape(1, -1)
+        return scaler.transform(image_array)
 
-    # Khởi tạo StandardScaler và huấn luyện với dữ liệu huấn luyện
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-
-    # Ví dụ sử dụng scaler để chuẩn hóa ảnh
-    image = np.random.rand(28, 28)  # Một ảnh ngẫu nhiên 28x28 pixels
-    preprocessed_image = preprocess_image(image)
     # Kiểm tra nếu có dữ liệu từ bảng vẽ hoặc file upload
     if uploaded_file or (canvas_result is not None and hasattr(canvas_result, 'image_data') and canvas_result.image_data is not None):
         if uploaded_file:
