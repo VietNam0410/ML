@@ -5,7 +5,5 @@ matplotlib
 seaborn
 scikit-learn
 mlflow
-importlib.util  
 streamlit-drawable-canvas
 opencv-python
-cv2
