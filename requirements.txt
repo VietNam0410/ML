@@ -7,4 +7,3 @@ scikit-learn
 mlflow
 streamlit-drawable-canvas
 opencv-python
-cv2
