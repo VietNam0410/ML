@@ -2,8 +2,6 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import mlflow
-import mlflow.sklearn
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split 
 from sklearn.preprocessing import StandardScaler
@@ -56,6 +54,7 @@ def display_model_metrics(y_test, y_pred):
         delta=f"{(accuracy-0.5)*100:.1f}% so với baseline"
     )
 
+# Xử lý vẽ và dự đoán
 def process_drawing(image_data, model, scaler):
     # Xử lý ảnh vẽ
     image = Image.fromarray((image_data[:, :, :3] * 255).astype(np.uint8))
@@ -79,6 +78,75 @@ def process_drawing(image_data, model, scaler):
         if confidence is not None:
             st.progress(float(max(confidence)))
             st.text(f"Độ tin cậy: {max(confidence):.2%}")
+
+def test_model_tab():
+    st.header("Thử nghiệm mô hình")
+    
+    if 'model' not in st.session_state:
+        st.warning("⚠️ Vui lòng huấn luyện mô hình trước khi thử nghiệm!")
+        return
+    model_name = st.session_state.get("model_name", "Chưa có mô hình nào")
+    st.markdown(f"### Mô hình đang sử dụng: {model_name}")
+    
+    method = st.radio(
+        "Chọn phương thức nhập liệu",
+        ["✏️ Vẽ", "📁 Tải ảnh"],
+        horizontal=True
+    )
+    
+    # Khởi tạo session state cho việc vẽ nếu chưa có
+    if 'drawing_submitted' not in st.session_state:
+        st.session_state.drawing_submitted = False
+    
+    if method == "✏️ Vẽ":
+        st.markdown("### Vẽ số cần nhận dạng")
+        
+        # Container cho khu vực vẽ
+        drawing_container = st.container()
+        with drawing_container:
+            canvas_result = st_canvas(
+                stroke_width=20,
+                stroke_color="white",
+                background_color="black",
+                height=280,
+                width=280,
+                drawing_mode="freedraw",
+                key="canvas"
+            )
+            
+            # Kiểm tra xem người dùng đã vẽ gì chưa
+            if canvas_result.image_data is not None:
+                # Kiểm tra xem có pixel nào được vẽ không
+                if np.any(canvas_result.image_data[:, :, 3] > 0):  # Kiểm tra kênh alpha
+                    # Hiển thị nút xác nhận
+                    if st.button("🎯 Nhận dạng", help="Nhấn để nhận dạng số bạn vừa vẽ"):
+                        process_drawing(
+                            canvas_result.image_data,
+                            st.session_state.model,
+                            st.session_state.scaler
+                        )
+                else:
+                    st.info("✏️ Hãy vẽ một số để bắt đầu nhận dạng")
+            
+            # Thêm nút xóa để vẽ lại
+            if st.button('Rerun'):
+                 st.rerun 
+    else:
+        uploaded_file = st.file_uploader(
+            "Tải lên ảnh chữ số",
+            type=['png', 'jpg', 'jpeg'],
+            help="Chọn ảnh chữ số cần nhận dạng (nền trắng, chữ đen)"
+        )
+        
+        if uploaded_file:
+            image = Image.open(uploaded_file)
+            # Thêm nút xác nhận cho cả trường hợp tải ảnh
+            if st.button("🎯 Nhận dạng ảnh", help="Nhấn để nhận dạng số trong ảnh"):
+                process_drawing(
+                    np.array(image),
+                    st.session_state.model,
+                    st.session_state.scaler
+                )
 
 def train_model_tab():
     st.header("Huấn luyện mô hình")
@@ -145,63 +213,17 @@ def train_model_tab():
             # Lưu mô hình và scaler vào session state
             st.session_state.model = model
             st.session_state.scaler = StandardScaler().fit(X_train)
+            st.session_state.model_name = model_option  # Lưu tên mô hình vào session_state
             
             # Hiển thị metrics
             display_model_metrics(y_test, y_pred)
             
-            # Log với MLFlow
-            with mlflow.start_run():
-                mlflow.sklearn.log_model(model, "model")
-                mlflow.log_metric("accuracy", accuracy_score(y_test, y_pred))
-                mlflow.log_param("model_type", model_option)
-                mlflow.log_param("test_size", test_size)
-
-def test_model_tab():
-    st.header("Thử nghiệm mô hình")
-    
-    if 'model' not in st.session_state:
-        st.warning("⚠️ Vui lòng huấn luyện mô hình trước khi thử nghiệm!")
-        return
-    
-    method = st.radio(
-        "Chọn phương thức nhập liệu",
-        ["✏️ Vẽ", "📁 Tải ảnh"],
-        horizontal=True
-    )
-    
-    if method == "✏️ Vẽ":
-        st.markdown("### Vẽ số cần nhận dạng")
-        canvas_result = st_canvas(
-            stroke_width=20,
-            stroke_color="white",
-            background_color="black",
-            height=280,
-            width=280,
-            drawing_mode="freedraw",
-            key="canvas"
-        )
-        
-        if canvas_result.image_data is not None:
-            process_drawing(
-                canvas_result.image_data,
-                st.session_state.model,
-                st.session_state.scaler
-            )
-    
-    else:
-        uploaded_file = st.file_uploader(
-            "Tải lên ảnh chữ số",
-            type=['png', 'jpg', 'jpeg'],
-            help="Chọn ảnh chữ số cần nhận dạng (nền trắng, chữ đen)"
-        )
-        
-        if uploaded_file:
-            image = Image.open(uploaded_file)
-            process_drawing(
-                np.array(image),
-                st.session_state.model,
-                st.session_state.scaler
-            )
+            # Log với MLFlow (bỏ qua ở đây)
+            # with mlflow.start_run():
+            #     mlflow.sklearn.log_model(model, "model")
+            #     mlflow.log_metric("accuracy", accuracy_score(y_test, y_pred))
+            #     mlflow.log_param("model_type", model_option)
+            #     mlflow.log_param("test_size", test_size)
 
 def main():
     # Đặt styles
