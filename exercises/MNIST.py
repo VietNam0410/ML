@@ -169,7 +169,7 @@ def train_model_tab():
         train_samples = int(total_samples * (1 - test_size))
         test_samples = int(total_samples * test_size)
         
-        st.info(f"""📌 Phân chia dữ liệu:
+        st.info(f"""📌 Phân chia dữ     liệu:
         - Tổng số mẫu: {total_samples:,}
         - Số mẫu huấn luyện: {train_samples:,} ({(1-test_size):.0%})
         - Số mẫu kiểm tra: {test_samples:,} ({test_size:.0%})""")
