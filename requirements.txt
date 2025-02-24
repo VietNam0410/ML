@@ -9,4 +9,3 @@ streamlit-drawable-canvas
 opencv-python
 openml
 Pillow
-uv
