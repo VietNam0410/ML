@@ -5,151 +5,225 @@ import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn
 from sklearn.datasets import fetch_openml
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split 
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score
 from PIL import Image, ImageOps
 from streamlit_drawable_canvas import st_canvas
 
-# Load dữ liệu (Caching to improve performance)
-@st.cache_data
+# Styles cho UI
+def set_custom_styles():
+    st.markdown("""
+        <style>
+        .main > div {
+            padding: 2rem;
+        }
+        .stButton>button {
+            width: 100%;
+            margin: 1rem 0;
+        }
+        .upload-text {
+            text-align: center;
+            padding: 1rem;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+# Load dữ liệu với progress bar
+@st.cache_data(show_spinner=False)
 def load_mnist():
-    mnist = fetch_openml('mnist_784', version=1, as_frame=False)
-    X, y = mnist.data, mnist.target.astype(int)
-    return X, y
+    with st.spinner('Đang tải dữ liệu MNIST...'):
+        mnist = fetch_openml('mnist_784', version=1, as_frame=False)
+        X, y = mnist.data, mnist.target.astype(int)
+        return X, y
 
-# Caching chuẩn hóa dữ liệu
-@st.cache_data
+# Chuẩn hóa dữ liệu với feedback
+@st.cache_data(show_spinner=False)
 def preprocess_data(X_train, X_test):
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-    return X_train_scaled, X_test_scaled
+    with st.spinner('Đang chuẩn hóa dữ liệu...'):
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+        return X_train_scaled, X_test_scaled
 
-def bai_tap_mnist():
-    st.subheader("📝 Bài tập MNIST")
-    st.write("Hãy thử thay đổi các tham số của mô hình và xem ảnh hưởng của chúng đến độ chính xác.")
+def display_model_metrics(y_test, y_pred):
+    accuracy = accuracy_score(y_test, y_pred)
+    st.metric(
+        label="Độ chính xác",
+        value=f"{accuracy:.2%}",
+        delta=f"{(accuracy-0.5)*100:.1f}% so với baseline"
+    )
 
-def main():
-    # Tạo các tab
-    tab1, tab2 = st.tabs(["🔧 Xử lý dữ liệu & Huấn luyện mô hình", "🎨 Demo mô hình"])
+def process_drawing(image_data, model, scaler):
+    # Xử lý ảnh vẽ
+    image = Image.fromarray((image_data[:, :, :3] * 255).astype(np.uint8))
+    image = image.convert('L')
+    image = ImageOps.invert(image)
+    image = image.resize((28, 28))
+    
+    # Hiển thị ảnh đã xử lý
+    col1, col2 = st.columns(2)
+    with col1:
+        st.image(image, caption="Ảnh gốc", width=200)
+    
+    # Chuẩn hóa và dự đoán
+    image_array = np.array(image).reshape(1, -1)
+    image_scaled = scaler.transform(image_array)
+    prediction = model.predict(image_scaled)[0]
+    
+    with col2:
+        st.success(f"Kết quả dự đoán: {prediction}")
+        confidence = model.predict_proba(image_scaled)[0] if hasattr(model, 'predict_proba') else None
+        if confidence is not None:
+            st.progress(float(max(confidence)))
+            st.text(f"Độ tin cậy: {max(confidence):.2%}")
 
-    with tab1:
-        st.header("1. Xử lý dữ liệu và Huấn luyện mô hình")
-        
-        # Load dữ liệu
+def train_model_tab():
+    st.header("Huấn luyện mô hình")
+    
+    # Tải và chia dữ liệu với thanh tiến trình
+    with st.expander("📊 Cấu hình dữ liệu", expanded=True):
         X, y = load_mnist()
-        st.write(f"🔹 Dữ liệu MNIST có {X.shape[0]} hình ảnh, mỗi ảnh có {X.shape[1]} pixel")
+        total_samples = X.shape[0]
+        
+        test_size = st.slider(
+            "Tỷ lệ dữ liệu kiểm tra",
+            min_value=0.1,
+            max_value=0.5,
+            value=0.2,
+            step=0.05,
+            help="Chọn tỷ lệ dữ liệu dùng để kiểm tra mô hình"
+        )
+        
+        train_samples = int(total_samples * (1 - test_size))
+        test_samples = int(total_samples * test_size)
+        
+        st.info(f"""📌 Phân chia dữ liệu:
+        - Tổng số mẫu: {total_samples:,}
+        - Số mẫu huấn luyện: {train_samples:,} ({(1-test_size):.0%})
+        - Số mẫu kiểm tra: {test_samples:,} ({test_size:.0%})""")
 
-        # Chia dữ liệu (Cho phép người dùng điều chỉnh tỷ lệ chia dữ liệu)
-        test_size = st.slider("Tỷ lệ dữ liệu kiểm tra", 0.1, 0.5, 0.2)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+    # Cấu hình mô hình
+    with st.expander("⚙️ Cấu hình mô hình", expanded=True):
+        model_option = st.selectbox(
+            "Chọn loại mô hình",
+            ["Decision Tree", "SVM"],
+            help="Chọn thuật toán học máy để phân loại"
+        )
 
-        # Thông báo sau khi chia dữ liệu
-        st.success(f"✅ Dữ liệu đã được chia thành công với tỷ lệ kiểm tra là {test_size:.2f}!")
-
-        # Preprocess dữ liệu (caching)
-        X_train_scaled, X_test_scaled = preprocess_data(X_train, X_test)
-
-        # Chọn mô hình
-        model_option = st.selectbox("Chọn mô hình để huấn luyện", ["Decision Tree", "SVM"])
-
-        # Thêm tham số mô hình có thể điều chỉnh
         if model_option == "Decision Tree":
-            max_depth = st.slider("Max Depth (Decision Tree)", 1, 20, 10)
+            max_depth = st.slider(
+                "Độ sâu tối đa của cây",
+                min_value=1,
+                max_value=20,
+                value=10,
+                help="Kiểm soát độ phức tạp của mô hình"
+            )
+            model = DecisionTreeClassifier(max_depth=max_depth, random_state=42)
         else:
-            C_value = st.slider("C (SVM)", 0.1, 10.0, 1.0)
+            C_value = st.slider(
+                "Hệ số điều chỉnh C",
+                min_value=0.1,
+                max_value=10.0,
+                value=1.0,
+                step=0.1,
+                help="Kiểm soát mức độ phạt với các điểm phân loại sai"
+            )
+            model = SVC(kernel='rbf', C=C_value, probability=True)
 
-        # Lưu mô hình vào session_state để tránh huấn luyện lại
-        if 'model' not in st.session_state:
-            st.session_state.model = None
-
-        # Huấn luyện mô hình nếu chưa có mô hình đã huấn luyện
-        if st.button("Huấn luyện mô hình") and st.session_state.model is None:
-            st.write("⏳ Đang huấn luyện mô hình...")
-            if model_option == "Decision Tree":
-                st.session_state.model = DecisionTreeClassifier(max_depth=max_depth, random_state=42)
-            else:
-                st.session_state.model = SVC(kernel='rbf', C=C_value)
+    # Huấn luyện mô hình
+    if st.button("🚀 Bắt đầu huấn luyện", help="Nhấn để bắt đầu quá trình huấn luyện"):
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+        X_train_scaled, X_test_scaled = preprocess_data(X_train, X_test)
+        
+        with st.spinner('Đang huấn luyện mô hình...'):
+            model.fit(X_train_scaled, y_train)
+            y_pred = model.predict(X_test_scaled)
             
-            st.session_state.model.fit(X_train_scaled, y_train)
-            y_pred = st.session_state.model.predict(X_test_scaled)
-            accuracy = accuracy_score(y_test, y_pred)
-            st.success(f"✅ Độ chính xác: {accuracy:.4f}")
+            # Lưu mô hình và scaler vào session state
+            st.session_state.model = model
+            st.session_state.scaler = StandardScaler().fit(X_train)
             
-            # Hiển thị ma trận nhầm lẫn
-            fig, ax = plt.subplots(figsize=(6, 4))
-            ax.matshow(confusion_matrix(y_test, y_pred), cmap=plt.cm.Blues)
-            st.pyplot(fig)
-
-            # Lưu vào MLFlow với input_example
-            input_example = X_train_scaled[0].reshape(1, -1)  # Ví dụ input từ X_train
+            # Hiển thị metrics
+            display_model_metrics(y_test, y_pred)
+            
+            # Log với MLFlow
             with mlflow.start_run():
-                mlflow.sklearn.log_model(st.session_state.model, "model", input_example=input_example)
-                mlflow.log_metric("accuracy", accuracy)
-                mlflow.log_param("model", model_option)
+                mlflow.sklearn.log_model(model, "model")
+                mlflow.log_metric("accuracy", accuracy_score(y_test, y_pred))
+                mlflow.log_param("model_type", model_option)
                 mlflow.log_param("test_size", test_size)
 
-            st.success("✅ Mô hình đã được huấn luyện và lưu trữ!")
-
-            # Thông báo thành công
-            st.info("🎉 Mô hình huấn luyện thành công! Bây giờ bạn có thể chuyển sang tab 2 để demo mô hình.")
-
-    with tab2:
-        st.header("2. Demo mô hình")
-
-        if st.session_state.model is not None:
-            st.subheader("Vẽ số hoặc tải ảnh để mô hình dự đoán")
-            
-            # Tải ảnh vẽ hoặc file
-            uploaded_file = st.file_uploader("Tải ảnh chữ số (28x28 pixel)", type=['png', 'jpg', 'jpeg'])
-
-            # Thêm bảng vẽ cho người dùng
-            st.subheader("✏️ Vẽ số trực tiếp")
-            canvas_result = st_canvas(
-                fill_color="black",
-                stroke_width=10,
-                stroke_color="white",
-                background_color="black",
-                height=280,
-                width=280,
-                drawing_mode="freedraw",
-                key="canvas",
+def test_model_tab():
+    st.header("Thử nghiệm mô hình")
+    
+    if 'model' not in st.session_state:
+        st.warning("⚠️ Vui lòng huấn luyện mô hình trước khi thử nghiệm!")
+        return
+    
+    method = st.radio(
+        "Chọn phương thức nhập liệu",
+        ["✏️ Vẽ", "📁 Tải ảnh"],
+        horizontal=True
+    )
+    
+    if method == "✏️ Vẽ":
+        st.markdown("### Vẽ số cần nhận dạng")
+        canvas_result = st_canvas(
+            stroke_width=20,
+            stroke_color="white",
+            background_color="black",
+            height=280,
+            width=280,
+            drawing_mode="freedraw",
+            key="canvas"
+        )
+        
+        if canvas_result.image_data is not None:
+            process_drawing(
+                canvas_result.image_data,
+                st.session_state.model,
+                st.session_state.scaler
+            )
+    
+    else:
+        uploaded_file = st.file_uploader(
+            "Tải lên ảnh chữ số",
+            type=['png', 'jpg', 'jpeg'],
+            help="Chọn ảnh chữ số cần nhận dạng (nền trắng, chữ đen)"
+        )
+        
+        if uploaded_file:
+            image = Image.open(uploaded_file)
+            process_drawing(
+                np.array(image),
+                st.session_state.model,
+                st.session_state.scaler
             )
 
-            def preprocess_image(image):
-                image = image.convert('L')
-                image = ImageOps.invert(image)
-                image = image.resize((28, 28))
-                image_array = np.array(image).reshape(1, -1)
-                return image_array
+def main():
+    # Đặt styles
+    set_custom_styles()
+    
+    st.title("🔢 Phân loại chữ số viết tay MNIST")
+    st.markdown("""
+    ### 👋 Chào mừng bạn đến với ứng dụng phân loại chữ số MNIST!
+    Ứng dụng này cho phép bạn:
+    - Thử nghiệm với các mô hình khác nhau
+    - Điều chỉnh tham số để tối ưu hiệu suất
+    - Vẽ hoặc tải lên chữ số để kiểm tra
+    """)
 
-            # Kiểm tra nếu có dữ liệu từ bảng vẽ hoặc file upload
-            if uploaded_file or (canvas_result.image_data is not None):
-                if uploaded_file:
-                    image = Image.open(uploaded_file)
-                elif canvas_result.image_data is not None:
-                    image = Image.fromarray((canvas_result.image_data[:, :, :3] * 255).astype(np.uint8))
-
-                # Kiểm tra nếu ảnh hợp lệ
-                if image is not None:
-                    image_array = preprocess_image(image)
-                    
-                    # Dự đoán với mô hình đã huấn luyện
-                    prediction = st.session_state.model.predict(image_array)[0]
-                    st.image(image, caption=f"📢 Mô hình dự đoán: {prediction}", use_container_width=True)
-                    st.success(f"✅ Kết quả dự đoán: {prediction}")
-
-                    # Thông báo sau khi dự đoán thành công
-                    st.info(f"🎉 Dự đoán thành công! Chữ số bạn vẽ là: {prediction}")
-
-                else:
-                    st.error("⚠️ Vui lòng vẽ số hoặc tải ảnh hợp lệ.")
-        else:
-            st.warning("⚠️ Vui lòng huấn luyện mô hình trước khi thử demo!")
-            st.info("🎯 Chuyển sang tab 1 để huấn luyện mô hình trước khi thử demo.")
+    # Tạo tabs
+    tab1, tab2 = st.tabs(["🔧 Huấn luyện mô hình", "🎨 Thử nghiệm"])
+    
+    with tab1:
+        train_model_tab()
+    
+    with tab2:
+        test_model_tab()
 
 if __name__ == "__main__":
     main()
