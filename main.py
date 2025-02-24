@@ -5,7 +5,7 @@ import importlib.util
 # 🏆 Tiêu đề trang web
 st.title("Bộ sưu tập bài tập 🎯")
 
-# # 🗂 Lấy danh sách các bài tập từ thư mục "exercises"
+# 🗂 Lấy danh sách các bài tập từ thư mục "exercises"
 exercise_files = [f for f in os.listdir("exercises") if f.endswith(".py")]
 exercise_names = [f.replace(".py", "") for f in exercise_files]
 
@@ -21,8 +21,13 @@ if selected_exercise:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    # Gọi hàm `main()` của bài tập
+    # Kiểm tra và gọi hàm `main()` của bài tập
     if hasattr(module, "main"):
-        module.main()
+        try:
+            st.sidebar.info(f"Đang chạy bài tập: {selected_exercise}...")
+            module.main()
+            st.sidebar.success(f"Hoàn thành bài tập: {selected_exercise}!")
+        except Exception as e:
+            st.error(f"Đã xảy ra lỗi khi chạy bài tập {selected_exercise}: {e}")
     else:
         st.error(f"Bài tập {selected_exercise} không có hàm main()!")
