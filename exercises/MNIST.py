@@ -2,7 +2,6 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split 
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
@@ -29,12 +28,26 @@ def set_custom_styles():
         </style>
         """, unsafe_allow_html=True)
 
-# Load dữ liệu với progress bar
+# Load dữ liệu từ file .npy với progress bar
 @st.cache_data(show_spinner=False)
 def load_mnist():
-    with st.spinner('Đang tải dữ liệu MNIST...'):
-        mnist = fetch_openml('mnist_784', version=1, as_frame=False)
-        X, y = mnist.data, mnist.target.astype(int)
+    with st.spinner('Đang tải dữ liệu MNIST từ file...'):
+        # Giả định có 9 file X_part_*.npy (từ 0 đến 8)
+        num_parts = 9
+        X_parts = []
+        
+        # Tải từng phần của X
+        for i in range(num_parts):
+            part = np.load(f"X_part_{i}.npy")
+            X_parts.append(part)
+        
+        # Ghép các phần lại thành X
+        X = np.vstack(X_parts)
+        X = X / 255.0  # Normalize the images (như trong code gốc)
+        
+        # Tải y
+        y = np.load("y.npy").astype(int)
+        
         return X, y
 
 # Chuẩn hóa dữ liệu với feedback
@@ -217,13 +230,6 @@ def train_model_tab():
             
             # Hiển thị metrics
             display_model_metrics(y_test, y_pred)
-            
-            # Log với MLFlow (bỏ qua ở đây)
-            # with mlflow.start_run():
-            #     mlflow.sklearn.log_model(model, "model")
-            #     mlflow.log_metric("accuracy", accuracy_score(y_test, y_pred))
-            #     mlflow.log_param("model_type", model_option)
-            #     mlflow.log_param("test_size", test_size)
 
 def main():
     # Đặt styles
