@@ -7,12 +7,6 @@ from sklearn.linear_model import LogisticRegression
 import os
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
-# Hiển thị tiêu đề với chữ màu vàng và hình cờ Việt Nam
-st.markdown(
-    "<h1 style='text-align: center; color: gold;'>🇻🇳 Dự đoán Sống Sót Trên Tàu Titanic 🇻🇳</h1>", 
-    unsafe_allow_html=True
-)
-
 
 def preprocess_data(df):
     # Xử lý giá trị thiếu
